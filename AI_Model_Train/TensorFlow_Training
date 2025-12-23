@@ -1,0 +1,68 @@
+import pandas as pd
+import glob
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder
+import tensorflow as tf
+from tensorflow.keras import layers, models
+import joblib
+
+print("📌 Loading all CSV files...")
+
+# 1. Load all CSV files automatically
+csv_files = glob.glob("*.csv")
+
+dataframes = []
+for file in csv_files:
+    df = pd.read_csv(file)
+    if "label" not in df.columns:
+        raise ValueError(f"CSV file '{file}' has no 'label' column!")
+    dataframes.append(df)
+    print("Loaded:", file)
+
+# 2. Combine all files
+df = pd.concat(dataframes, ignore_index=True)
+print("\nTotal records loaded:", len(df))
+
+# 3. Extract features
+X = df[["mq2", "mq3", "mq135"]].values
+
+# 4. Encode labels
+y = df["label"].values
+encoder = LabelEncoder()
+y_encoded = encoder.fit_transform(y)
+
+print("Classes detected:", encoder.classes_)
+
+# 5. Train-test split
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y_encoded, test_size=0.2, random_state=42, stratify=y_encoded
+)
+
+# 6. Build a better neural network
+model = models.Sequential([
+    layers.Input(shape=(3,)),
+    layers.Dense(64, activation="relu"),
+    layers.Dense(32, activation="relu"),
+    layers.Dense(16, activation="relu"),
+    layers.Dense(len(encoder.classes_), activation="softmax")
+])
+
+model.compile(
+    optimizer="adam",
+    loss="sparse_categorical_crossentropy",
+    metrics=["accuracy"]
+)
+
+print("\n📌 Training model...")
+history = model.fit(X_train, y_train, epochs=60, batch_size=8, verbose=1)
+
+# 7. Evaluate
+loss, acc = model.evaluate(X_test, y_test)
+print("\n🔥 Test Accuracy:", acc)
+
+# 8. Save model + encoder
+model.save("gas_classifier.h5")
+joblib.dump(encoder, "label_encoder.pkl")
+
+print("\n✅ Training complete!")
+print("Saved: gas_classifier.h5 and label_encoder.pkl")
