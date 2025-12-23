@@ -1,0 +1,15 @@
+import tensorflow as tf
+
+# Load your trained model
+model = tf.keras.models.load_model("gas_classifier.h5")
+
+# Convert to TFLite
+converter = tf.lite.TFLiteConverter.from_keras_model(model)
+tflite_model = converter.convert()
+
+# Save TFLite model
+with open("gas_classifier.tflite", "wb") as f:
+    f.write(tflite_model)
+
+print("✅ Conversion complete! Saved as gas_classifier.tflite")
+
